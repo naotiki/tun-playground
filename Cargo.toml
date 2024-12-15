@@ -1,0 +1,15 @@
+[package]
+name = "tun-playground"
+version = "0.1.0"
+edition = "2021"
+[[bin]]
+name = "tunquic"
+path = "src/main.rs"
+[dependencies]
+tun = {version = "0.7.5",features = ["async"]}
+quiche = "0.22"
+
+clap = { version = "4.5.9", features = ["derive"]}
+inquire = "0.7.5"
+tokio = { version = "1", features = ["full"] }
+ring = "0.17"
