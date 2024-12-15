@@ -3,8 +3,8 @@ use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 use tokio::net::UdpSocket;
-use tokio::{io, join};
 use tokio::sync::mpsc;
+use tokio::{io, join};
 use tun::ToAddress;
 
 #[derive(clap::Parser, Debug)]
@@ -12,7 +12,7 @@ use tun::ToAddress;
 pub struct Argument {
     #[command(subcommand)]
     command: Commands,
-    #[arg(short, long,  required = true)]
+    #[arg(short, long, required = true)]
     tun_addr: String,
     #[arg(long, short = 'v', global = true)]
     verbose: bool,
@@ -36,13 +36,13 @@ impl Argument {
             .destination((10, 0, 0, 1))
             .tun_name("tunquick0")
             .up();
-        
+
         #[cfg(target_os = "linux")]
         config.platform_config(|config| {
             // requiring root privilege to acquire complete functions
             config.ensure_root_privileges(true);
         });
-        
+
         let (mut dev_write, mut dev_read) = tun::create_as_async(&config).unwrap().split().unwrap();
 
         async fn pipe<R, W>(read: &mut R, write: &mut W)
@@ -62,24 +62,23 @@ impl Argument {
                 let udp_socket = UdpSocket::bind(listen).await.unwrap();
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
-                
-                
-                let pipe =
-                    tokio::spawn(async move {
-                        let mut buf = [0; 4096];
-                        loop {
-                            let amount= dev_read.read(&mut buf).await.unwrap();
-                            println!("{:?} bytes received from tun", amount);   
-                            s.send_to(&buf[0..amount], s.peer_addr().unwrap()).await.unwrap();
-                        }
-                    });
+
+                let pipe = tokio::spawn(async move {
+                    let mut buf = [0; 4096];
+                    loop {
+                        let amount = dev_read.read(&mut buf).await.unwrap();
+                        println!("{:?} bytes received from tun", amount);
+                        s.send_to(&buf[0..amount], s.peer_addr().unwrap())
+                            .await
+                            .unwrap();
+                    }
+                });
                 let mut buf = [0; 4096];
                 loop {
                     let (len, addr) = r.recv_from(&mut buf).await.unwrap();
                     println!("{:?} bytes received from {:?}", len, addr);
                     dev_write.write(&buf[..len]).await.unwrap();
                 }
-
             }
             Commands::Client { host } => {
                 let server_addrs = host.to_socket_addrs().unwrap().next().unwrap();
@@ -96,16 +95,14 @@ impl Argument {
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
 
-
-                let pipe =
-                    tokio::spawn(async move {
-                        let mut buf = [0; 4096];
-                        loop {
-                            let amount= dev_read.read(&mut buf).await.unwrap();
-                            println!("{:?} bytes received from tun", amount);
-                            s.send_to(&buf[0..amount], server_addrs).await.unwrap();
-                        }
-                    });
+                let pipe = tokio::spawn(async move {
+                    let mut buf = [0; 4096];
+                    loop {
+                        let amount = dev_read.read(&mut buf).await.unwrap();
+                        println!("{:?} bytes received from tun", amount);
+                        s.send_to(&buf[0..amount], server_addrs).await.unwrap();
+                    }
+                });
                 let mut buf = [0; 4096];
                 loop {
                     let (len, addr) = r.recv_from(&mut buf).await.unwrap();
