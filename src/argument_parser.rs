@@ -1,11 +1,10 @@
 use clap::{command, Parser};
-use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+use std::io::{Read, Write};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 use tokio::net::UdpSocket;
-use tokio::sync::mpsc;
-use tokio::{io, join};
-use tun::ToAddress;
+use tokio::io;
+use tun::{BoxError, Configuration, ToAddress};
 
 #[derive(clap::Parser, Debug)]
 #[command(name = "tunquic", version, about, author, long_about = None)]
@@ -21,20 +20,19 @@ pub struct Argument {
 }
 
 impl Argument {
-    pub async fn exec(&self) {
+    pub async fn exec(&self) -> Result<(), BoxError> {
         if self.debug {
             println!("{:?}", self);
         }
 
         let tun_ipaddr = self.tun_addr.to_address().unwrap();
-
+        println!("ip:{}",tun_ipaddr);
         // create TUN device
-        let mut config = tun::Configuration::default();
+        let mut config = Configuration::default();
         config
             .address(tun_ipaddr)
             .netmask((255, 255, 255, 0))
             .destination((10, 0, 0, 1))
-            .tun_name("tunquick0")
             .up();
 
         #[cfg(target_os = "linux")]
@@ -43,30 +41,23 @@ impl Argument {
             config.ensure_root_privileges(true);
         });
 
-        let (mut dev_write, mut dev_read) = tun::create_as_async(&config).unwrap().split().unwrap();
-
-        async fn pipe<R, W>(read: &mut R, write: &mut W)
-        where
-            R: io::AsyncRead + Unpin,
-            W: io::AsyncWrite + Unpin,
-        {
-            let mut buf = [0; 4096];
-            println!("pipe:created");
-            loop {
-                let amount = read.read(&mut buf).await.unwrap();
-                write.write(&buf[0..amount]).await.unwrap();
-            }
-        }
+        let dev = tun::create(&config)?;
+        let ( mut dev_read,mut dev_write) = dev.split();
         match &self.command {
             Commands::Server { listen } => {
                 let udp_socket = UdpSocket::bind(listen).await.unwrap();
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
 
+                let mut peerAddr:IpAddr= std::net::IpAddr::V4(Ipv4Addr::UNSPECIFIED);
                 let pipe = tokio::spawn(async move {
                     let mut buf = [0; 4096];
                     loop {
-                        let amount = dev_read.read(&mut buf).await.unwrap();
+                        if peerAddr.is_unspecified() {
+                            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                            continue;
+                        }
+                        let amount = dev_read.read(&mut buf).unwrap();
                         println!("{:?} bytes received from tun", amount);
                         s.send_to(&buf[0..amount], s.peer_addr().unwrap())
                             .await
@@ -76,8 +67,9 @@ impl Argument {
                 let mut buf = [0; 4096];
                 loop {
                     let (len, addr) = r.recv_from(&mut buf).await.unwrap();
+                    peerAddr = addr.ip().clone();
                     println!("{:?} bytes received from {:?}", len, addr);
-                    dev_write.write(&buf[..len]).await.unwrap();
+                    dev_write.write(&buf[..len]).unwrap();
                 }
             }
             Commands::Client { host } => {
@@ -94,11 +86,10 @@ impl Argument {
 
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
-
                 let pipe = tokio::spawn(async move {
                     let mut buf = [0; 4096];
                     loop {
-                        let amount = dev_read.read(&mut buf).await.unwrap();
+                        let amount = dev_read.read(&mut buf).unwrap();
                         println!("{:?} bytes received from tun", amount);
                         s.send_to(&buf[0..amount], server_addrs).await.unwrap();
                     }
@@ -107,7 +98,7 @@ impl Argument {
                 loop {
                     let (len, addr) = r.recv_from(&mut buf).await.unwrap();
                     println!("{:?} bytes received from {:?}", len, addr);
-                    dev_write.write(&buf[..len]).await.unwrap();
+                    dev_write.write(&buf[..len]).unwrap();
                 }
             }
         }
