@@ -4,7 +4,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::io;
-use tun::{BoxError, Configuration, ToAddress};
+use tun::{BoxError, Configuration, Layer, ToAddress};
 
 #[derive(clap::Parser, Debug)]
 #[command(name = "tunquic", version, about, author, long_about = None)]
@@ -33,6 +33,7 @@ impl Argument {
             .address(tun_ipaddr)
             .netmask((255, 255, 255, 0))
             .destination((10, 0, 0, 1))
+            .layer(Layer::L3)
             .up();
 
         #[cfg(target_os = "linux")]
