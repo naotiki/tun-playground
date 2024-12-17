@@ -34,14 +34,14 @@ pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: IpAddr) {
     }
 }
 
-pub async fn udp_to_tun(tun: &mut Writer, udp: &UdpSocket, /*peer_addr: Option<&mut IpAddr>*/) {
+pub async fn udp_to_tun(tun: &mut Writer, udp: &UdpSocket, peer_addr: Option<&mut IpAddr>) {
     let mut buffer = [0u8; 1500];
     loop {
         match udp.recv_from(&mut buffer).await {
             Ok((n, addr)) => {
-                /*if  let Some(a)=peer_addr {
+                if  let Some(&mut ref mut a) = peer_addr {
                     *(a) = addr.to_address().unwrap();
-                }*/
+                }
                 let capsule: Capsule = bincode::deserialize(&buffer[..n]).unwrap();
                 info!("read {} bytes from UDP", n);
                 tun.write_all(capsule.data.as_slice()).unwrap();

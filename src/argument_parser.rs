@@ -46,7 +46,7 @@ impl Argument {
         let ( mut dev_read,mut dev_write) = dev.split();
         match &self.command {
             Commands::Server { listen } => {
-                /*let udp_socket = UdpSocket::bind(listen).await.unwrap();
+                let udp_socket = UdpSocket::bind(listen).await.unwrap();
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
 
@@ -73,7 +73,7 @@ impl Argument {
                     println!("{:?} bytes received from {:?}", len, addr);
                     dev_write.write(&buf[..len]).unwrap();
                 }*/
-                udp_to_tun(&mut dev_write, &r, Some(&mut peer_addr)).await;*/
+                udp_to_tun(&mut dev_write, &r, Some(&mut peer_addr)).await;
             }
             Commands::Client { host } => {
                 let server_addrs = host.to_socket_addrs().unwrap().next().unwrap();
@@ -105,7 +105,7 @@ impl Argument {
                     println!("{:?} bytes received from {:?}", len, addr);
                     dev_write.write(&buf[..len]).unwrap();
                 }*/
-                udp_to_tun(&mut dev_write, &r).await;
+                udp_to_tun(&mut dev_write, &r,None).await;
             }
         }
         println!("end:exec");
