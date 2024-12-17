@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::io;
 use tun::{BoxError, Configuration, Layer, ToAddress};
+use crate::protocol::{tun_to_udp, udp_to_tun};
 
 #[derive(clap::Parser, Debug)]
 #[command(name = "tunquic", version, about, author, long_about = None)]
@@ -33,7 +34,6 @@ impl Argument {
             .address(tun_ipaddr)
             .netmask((255, 255, 255, 0))
             .destination((10, 0, 0, 1))
-            .layer(Layer::L3)
             .up();
 
         #[cfg(target_os = "linux")]
@@ -46,15 +46,15 @@ impl Argument {
         let ( mut dev_read,mut dev_write) = dev.split();
         match &self.command {
             Commands::Server { listen } => {
-                let udp_socket = UdpSocket::bind(listen).await.unwrap();
+                /*let udp_socket = UdpSocket::bind(listen).await.unwrap();
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
 
-                let mut peerAddr:IpAddr= std::net::IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+                let mut peer_addr:IpAddr= IpAddr::V4(Ipv4Addr::UNSPECIFIED);
                 let pipe = tokio::spawn(async move {
-                    let mut buf = [0; 4096];
+                    /*let mut buf = [0; 4096];
                     loop {
-                        if peerAddr.is_unspecified() {
+                        if peer_addr.is_unspecified() {
                             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
                             continue;
                         }
@@ -63,18 +63,21 @@ impl Argument {
                         s.send_to(&buf[0..amount], s.peer_addr().unwrap())
                             .await
                             .unwrap();
-                    }
+                    }*/
+                    tun_to_udp(&mut dev_read, &s, peer_addr).await;
                 });
-                let mut buf = [0; 4096];
+                /*let mut buf = [0; 4096];
                 loop {
                     let (len, addr) = r.recv_from(&mut buf).await.unwrap();
-                    peerAddr = addr.ip().clone();
+                    peer_addr = addr.ip().clone();
                     println!("{:?} bytes received from {:?}", len, addr);
                     dev_write.write(&buf[..len]).unwrap();
-                }
+                }*/
+                udp_to_tun(&mut dev_write, &r, Some(&mut peer_addr)).await;*/
             }
             Commands::Client { host } => {
                 let server_addrs = host.to_socket_addrs().unwrap().next().unwrap();
+                let addr = server_addrs.to_address().unwrap();
                 let udp_socket = (match server_addrs {
                     SocketAddr::V4(_) => {
                         UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0)).await as io::Result<UdpSocket>
@@ -88,22 +91,25 @@ impl Argument {
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
                 let pipe = tokio::spawn(async move {
-                    let mut buf = [0; 4096];
+                    /*let mut buf = [0; 4096];
                     loop {
                         let amount = dev_read.read(&mut buf).unwrap();
                         println!("{:?} bytes received from tun", amount);
                         s.send_to(&buf[0..amount], server_addrs).await.unwrap();
-                    }
+                    }*/
+                    tun_to_udp(&mut dev_read, &s, addr).await;
                 });
-                let mut buf = [0; 4096];
+                /*let mut buf = [0; 4096];
                 loop {
                     let (len, addr) = r.recv_from(&mut buf).await.unwrap();
                     println!("{:?} bytes received from {:?}", len, addr);
                     dev_write.write(&buf[..len]).unwrap();
-                }
+                }*/
+                udp_to_tun(&mut dev_write, &r).await;
             }
         }
         println!("end:exec");
+        Ok(())
     }
 }
 
