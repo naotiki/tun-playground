@@ -64,7 +64,7 @@ impl Argument {
                             .await
                             .unwrap();
                     }*/
-                    tun_to_udp(&mut dev_read, &s, peer_addr).await;
+                    tun_to_udp(&mut dev_read, &s, &peer_addr).await;
                 });
                 /*let mut buf = [0; 4096];
                 loop {
@@ -97,7 +97,7 @@ impl Argument {
                         println!("{:?} bytes received from tun", amount);
                         s.send_to(&buf[0..amount], server_addrs).await.unwrap();
                     }*/
-                    tun_to_udp(&mut dev_read, &s, addr).await;
+                    tun_to_udp(&mut dev_read, &s, &addr).await;
                 });
                 /*let mut buf = [0; 4096];
                 loop {

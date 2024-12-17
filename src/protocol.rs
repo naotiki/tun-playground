@@ -11,7 +11,7 @@ struct Capsule {
     data: Vec<u8>,
 }
 
-pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: IpAddr) {
+pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: &IpAddr) {
     let mut buffer = [0u8; 1500];
     loop {
         if peer_addr.is_unspecified() {
