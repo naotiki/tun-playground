@@ -1,11 +1,11 @@
+use crate::protocol::{tun_to_udp, udp_to_tun};
 use clap::{command, Parser};
 use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
-use tokio::net::UdpSocket;
 use tokio::io;
+use tokio::net::UdpSocket;
 use tun::{BoxError, Configuration, Layer, ToAddress};
-use crate::protocol::{tun_to_udp, udp_to_tun};
 
 #[derive(clap::Parser, Debug)]
 #[command(name = "tunquic", version, about, author, long_about = None)]
@@ -27,7 +27,7 @@ impl Argument {
         }
 
         let tun_ipaddr = self.tun_addr.to_address().unwrap();
-        println!("ip:{}",tun_ipaddr);
+        println!("ip:{}", tun_ipaddr);
         // create TUN device
         let mut config = Configuration::default();
         config
@@ -43,14 +43,14 @@ impl Argument {
         });
 
         let dev = tun::create(&config)?;
-        let ( mut dev_read,mut dev_write) = dev.split();
+        let (mut dev_read, mut dev_write) = dev.split();
         match &self.command {
             Commands::Server { listen } => {
                 let udp_socket = UdpSocket::bind(listen).await.unwrap();
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
 
-                let mut peer_addr:IpAddr= IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+                let mut peer_addr: Option<SocketAddr> = None;
                 let pipe = tokio::spawn(async move {
                     /*let mut buf = [0; 4096];
                     loop {
@@ -87,7 +87,6 @@ impl Argument {
                     }
                 })
                 .unwrap();
-
                 let r = Arc::new(udp_socket);
                 let s = r.clone();
                 let pipe = tokio::spawn(async move {
@@ -97,7 +96,7 @@ impl Argument {
                         println!("{:?} bytes received from tun", amount);
                         s.send_to(&buf[0..amount], server_addrs).await.unwrap();
                     }*/
-                    tun_to_udp(&mut dev_read, &s, &addr).await;
+                    tun_to_udp(&mut dev_read, &s, &Some(server_addrs)).await;
                 });
                 /*let mut buf = [0; 4096];
                 loop {
@@ -105,7 +104,7 @@ impl Argument {
                     println!("{:?} bytes received from {:?}", len, addr);
                     dev_write.write(&buf[..len]).unwrap();
                 }*/
-                udp_to_tun(&mut dev_write, &r,None).await;
+                udp_to_tun(&mut dev_write, &r, None).await;
             }
         }
         println!("end:exec");
