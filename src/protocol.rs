@@ -1,7 +1,7 @@
 use log::{error, info};
 use serde_derive::{Deserialize, Serialize};
 use std::io::{Read, Write};
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr};
 use std::ptr;
 use tokio::net::UdpSocket;
 use tun::{Reader, ToAddress, Writer};
@@ -18,6 +18,7 @@ pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: &IpAddr) {
             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
             continue;
         }
+        let s=SocketAddr::new(*peer_addr,12345);
         match tun.read(&mut buffer) {
             Ok(n) => {
                 info!("read {} bytes from TUN", n);
@@ -25,7 +26,7 @@ pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: &IpAddr) {
                     data: buffer[..n].to_vec(),
                 };
                 let serialized_data = bincode::serialize(&capsule).unwrap();
-                udp.send(&serialized_data).await.unwrap();
+                udp.send_to(&serialized_data,s).await.unwrap();
             }
             Err(e) => {
                 error!("TUN read error: {}", e);
