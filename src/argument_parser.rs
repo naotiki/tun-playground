@@ -1,11 +1,10 @@
 use crate::protocol::{tun_to_udp, udp_to_tun};
 use clap::{command, Parser};
-use std::io::{Read, Write};
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use tokio::io;
 use tokio::net::UdpSocket;
-use tun::{BoxError, Configuration, Layer, ToAddress};
+use tun::{BoxError, Configuration, ToAddress};
 
 #[derive(clap::Parser, Debug)]
 #[command(name = "tunquic", version, about, author, long_about = None)]
@@ -34,6 +33,7 @@ impl Argument {
             .address(tun_ipaddr)
             .netmask((255, 255, 255, 0))
             .destination((10, 0, 0, 1))
+            .mtu(1200)
             .up();
 
         #[cfg(target_os = "linux")]

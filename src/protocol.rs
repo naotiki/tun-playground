@@ -2,9 +2,8 @@ use log::{error, info};
 use serde_derive::{Deserialize, Serialize};
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr};
-use std::ptr;
 use tokio::net::UdpSocket;
-use tun::{Reader, ToAddress, Writer};
+use tun::{Reader, Writer};
 
 #[derive(Serialize, Deserialize)]
 struct Capsule {
