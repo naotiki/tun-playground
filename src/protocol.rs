@@ -9,6 +9,13 @@ use tun::{Reader, Writer};
 struct Capsule {
     data: Vec<u8>,
 }
+pub enum Protocol {
+    Tcp,
+    Udp,
+    Quic,
+}
+
+pub const USING_PROTOCOL: Protocol = Protocol::Quic;
 
 pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: &Option<SocketAddr>) {
     let mut buffer = [0u8; 1500];
