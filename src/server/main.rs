@@ -21,4 +21,5 @@ async fn main() -> io::Result<()> {
     let protocol = USING_PROTOCOL; // またはProtocol::Udp, Protocol::Quic
     let server = create_server(protocol, "127.0.0.1:8080").await?;
     server.start().await
+    
 }

@@ -6,6 +6,7 @@ use std::sync::Arc;
 use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 use crate::server::server::Server;
 
+
 pub struct QuicServer {
     address: String,
 }
@@ -51,7 +52,6 @@ impl Server for QuicServer {
         }
         Ok(())
     }
-
 }
 
 
