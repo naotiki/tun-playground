@@ -1,20 +1,15 @@
 use futures::{SinkExt, StreamExt};
 use std::io;
-use std::io::{BufWriter, Read, Write};
-use std::ops::Deref;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tun_playground::client::quic::QuicTransport;
 use tun_playground::client::tcp::TcpTransport;
 use tun_playground::client::transport::Transport;
-use tun_playground::client::udp::UdpTransport;
 use tun_playground::protocol::{Protocol, USING_PROTOCOL};
 use tun_playground::tun::TunInterface;
 
 pub async fn create_transport(protocol: Protocol, addr: &str) -> io::Result<Box<dyn Transport>> {
     match protocol {
         Protocol::Tcp => Ok(Box::new(TcpTransport::new(addr).await?)),
-        Protocol::Udp => Ok(Box::new(UdpTransport::new("0.0.0.0:0", addr).await?)),
         Protocol::Quic => Ok(Box::new(QuicTransport::new(addr).await?)),
     }
 }
@@ -64,5 +59,4 @@ async fn main() -> io::Result<()> {
     let response = transport.receive().await?;
     println!("Response: {:?}", response);*/
 
-    Ok(())
 }

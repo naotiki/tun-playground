@@ -11,7 +11,6 @@ struct Capsule {
 }
 pub enum Protocol {
     Tcp,
-    Udp,
     Quic,
 }
 
