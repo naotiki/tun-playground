@@ -19,21 +19,6 @@ impl QuicServer {
             address: address.to_string(),
         }
     }
-
-    async fn handle_connection(conn: quinn::Connection) -> io::Result<()> {
-        let (mut send, mut recv) = conn.accept_bi().await?;
-        
-        let mut buffer = vec![0; 1024];
-        loop {
-            let Some(n) = recv.read(&mut buffer).await? else { break; };
-            if n == 0 {
-                break;
-            }
-            println!("Received: {:?}", &buffer[..n]);
-            send.write_all(&buffer[..n]).await?; // Echo back the data
-        }
-        Ok(())
-    }
 }
 
 #[async_trait::async_trait]
@@ -47,8 +32,7 @@ impl Server for QuicServer {
             println!("New QUIC connection: {:?}", new_connection.remote_address());
 
             tokio::spawn(async move {
-                
-                let (mut send, mut recv) = new_connection.accept_bi().await.unwrap();
+                let (send, recv) = new_connection.accept_bi().await.unwrap();
                 if let Err(e) = session_handler(AppSession::new(Box::new(recv), Box::new(send))).await {
                     eprintln!("Connection failed: {}", e);
                 }
