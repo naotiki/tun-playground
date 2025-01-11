@@ -17,7 +17,7 @@ impl TunInterface {
             .netmask((255, 255, 255, 0))
             .destination((10, 0, 0, 1))
             .mtu(1200)
-            .layer(tun::Layer::L2)
+            .layer(tun::Layer::L3)
             .up();
         #[cfg(target_os = "linux")]
         config.platform_config(|config| {
