@@ -4,12 +4,12 @@ use futures::{SinkExt, StreamExt};
 use tun_playground::tun::TunInterface;
 use std::collections::HashMap;
 use std::io;
+use std::net::Ipv4Addr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tun_playground::protocol::{Protocol, USING_PROTOCOL};
 use tun_playground::server::quic::QuicServer;
 use tun_playground::server::server::Server;
 use tun_playground::server::tcp::TcpServer;
-
 pub async fn create_server(protocol: Protocol, address: &str) -> io::Result<Box<dyn Server>> {
     match protocol {
         Protocol::Tcp => Ok(Box::new(TcpServer::new(address))),
@@ -40,13 +40,17 @@ async fn main() -> io::Result<()> {
         })
         .await
         .unwrap(); */
-
-    server
+    // without windows
+    #[cfg(not(target_os = "windows"))]
+    {
+        server
         .start(|session| {
             Box::pin(async move {
-                let tun = TunInterface::new("10.0.0.1".parse().unwrap());
-                let (mut sink, mut stream) = tun.framed.split();
-                
+                let mut tap = Tap::new()?;
+                tap.add_addr(Ipv4Addr::new(10, 0, 0, 1))?;
+                tap.set_up()?;
+                let (mut sink, mut stream) = tap.framed.split();
+
                 println!("Session ID: {}", session.session_id);
                 let mut read = session.read;
                 let mut write = session.write;
@@ -72,4 +76,8 @@ async fn main() -> io::Result<()> {
             })
         })
         .await
+    }
+    
+    #[cfg(target_os = "windows")]
+    Err(io::Error::new(io::ErrorKind::Other, "Windows is not supported"))
 }
