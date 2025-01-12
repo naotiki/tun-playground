@@ -55,7 +55,7 @@ async fn main() -> io::Result<()> {
                     loop {
                         let response = read.read(&mut buffer).await.unwrap();
                         // print response utf-8
-                        print!("server:{}", String::from_utf8_lossy(&buffer[..response]));
+                        //print!("server:{}", String::from_utf8_lossy(&buffer[..response]));
                         sink.send(buffer[..response].to_vec()).await.unwrap();
                     }
                 });
