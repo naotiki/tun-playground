@@ -34,4 +34,4 @@ bollard = "0.18.1"
 
 ulid = "1.1.4"
 
-tappers = "0.4.2"
+tappers = { version = "0.4.2", features = ["tapwin6","wintun","tokio"] }
