@@ -5,11 +5,16 @@ use tun_playground::tun::TunInterface;
 use std::collections::HashMap;
 use std::io;
 use std::net::Ipv4Addr;
+use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tun_playground::protocol::{Protocol, USING_PROTOCOL};
 use tun_playground::server::quic::QuicServer;
 use tun_playground::server::server::Server;
 use tun_playground::server::tcp::TcpServer;
+
+#[cfg(not(target_os = "windows"))]
+use tappers::tokio::AsyncTap;
+
 pub async fn create_server(protocol: Protocol, address: &str) -> io::Result<Box<dyn Server>> {
     match protocol {
         Protocol::Tcp => Ok(Box::new(TcpServer::new(address))),
@@ -46,33 +51,27 @@ async fn main() -> io::Result<()> {
         server
         .start(|session| {
             Box::pin(async move {
-                let mut tap = Tap::new()?;
+                let mut tap = AsyncTap::new()?;
                 tap.add_addr(Ipv4Addr::new(10, 0, 0, 1))?;
                 tap.set_up()?;
-                let (mut sink, mut stream) = tap.framed.split();
+                let tap_writer = Arc::new(tap);
+                let tap_reader = tap_writer.clone();
 
                 println!("Session ID: {}", session.session_id);
-                let mut read = session.read;
-                let mut write = session.write;
+                let mut quic_reader = session.read;
+                let mut quic_writer = session.write;
                 tokio::spawn(async move {
                     let mut buffer = vec![0; 1024];
                     loop {
-                        let response = read.read(&mut buffer).await.unwrap();
-                        // print response utf-8
-                        //print!("server:{}", String::from_utf8_lossy(&buffer[..response]));
-                        sink.send(buffer[..response].to_vec()).await.unwrap();
+                        let response = quic_reader.read(&mut buffer).await.unwrap();
+                        tap_writer.send(&buffer[..response]).await.unwrap();
                     }
                 });
-                
+                let mut buffer = vec![0; 1024];
                 loop {
-                    tokio::select! {
-                        Some(packet)=stream.next()=>{
-                            let pkt: Vec<u8> = packet?;
-                            write.write_all(&pkt).await.unwrap();
-                        }
-                    }
+                    let size = tap_reader.recv(&mut buffer).await.unwrap();
+                    quic_writer.write_all(&buffer[..size]).await.unwrap();
                 }
-                Ok(())
             })
         })
         .await
