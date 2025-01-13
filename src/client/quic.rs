@@ -2,21 +2,20 @@ use crate::client::transport::Transport;
 use quinn::crypto::rustls::QuicClientConfig;
 use quinn::{ClientConfig, Endpoint};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
-use rustls::KeyLogFile;
+use tokio::io::{AsyncRead, AsyncWrite, };
 use std::io;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 pub struct QuicTransport {
     connection: quinn::Connection,
-    send: Arc<Mutex<quinn::SendStream>>,
-    recv: Arc<Mutex<quinn::RecvStream>>,
+    send: quinn::SendStream,
+    recv: quinn::RecvStream,
 }
 
 impl QuicTransport {
     pub async fn new(server_addr: &str) -> io::Result<Self> {
         let mut endpoint = Endpoint::client("0.0.0.0:0".parse().unwrap())?;
-        let mut client_config = rustls::ClientConfig::builder()
+        let client_config = rustls::ClientConfig::builder()
             .dangerous()
             .with_custom_certificate_verifier(SkipServerVerification::new())
             .with_no_client_auth();
@@ -36,26 +35,19 @@ impl QuicTransport {
         println!("[client] connected: addr={}", connection.remote_address());
         Ok(Self {
             connection,
-            send: Arc::new(Mutex::new(send)),
-            recv: Arc::new(Mutex::new(recv)),
+            recv,
+            send
         })
     }
 }
 
 #[async_trait::async_trait]
 impl Transport for QuicTransport {
-    async fn send(&self, data: &[u8]) -> io::Result<()> {
-        let mut send_stream = self.send.lock().await;
-        send_stream.write_all(data).await?;
-        Ok(())
-    }
-
-    async fn receive(&self) -> io::Result<Vec<u8>> {
-        let mut recv_stream = self.recv.lock().await;
-        let mut buffer = vec![0; 1024];
-        let n = recv_stream.read(&mut buffer).await?;
-        buffer.truncate(n.unwrap_or(0));        
-        Ok(buffer)
+    fn split(self: Box<Self>) -> (Box<dyn AsyncRead + Send + Unpin>, Box<dyn AsyncWrite + Send + Unpin>) {
+        let recv = self.recv;
+        let send = self.send;
+        
+        (Box::new(recv), Box::new(send))
     }
 }
 
@@ -114,3 +106,4 @@ impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
         self.0.signature_verification_algorithms.supported_schemes()
     }
 }
+

@@ -1,6 +1,6 @@
 use futures::{SinkExt, StreamExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use std::io;
-use std::sync::Arc;
 use tun_playground::client::quic::QuicTransport;
 use tun_playground::client::tcp::TcpTransport;
 use tun_playground::client::transport::Transport;
@@ -19,26 +19,29 @@ async fn main() -> io::Result<()> {
     let protocol = USING_PROTOCOL; // 動的に変更可能
 
     let tun = TunInterface::new("10.0.0.2".parse().unwrap());
-    let (mut sink, mut stream) = tun.framed.split();
+    let (mut tun_sink, mut tun_stream) = tun.framed.split();
     let transport = create_transport(protocol, "127.0.0.1:8080").await?;
-    let arc = Arc::new(transport);
-    let cloned_arc = arc.clone();
+    let (mut recv, mut send) = transport.split();
+    
     //copy received data to stdout using tokio::spawn
     tokio::spawn(async move {
         loop {
-            let response = arc.receive().await.unwrap();
+            
+            let mut buffer = vec![0; 1024];
+            let n = recv.read(&mut buffer).await.unwrap();
+            buffer.truncate(n);
             // print response utf-8
-            print!("server:{}", String::from_utf8_lossy(&response));
-            sink.send(response).await.unwrap();
+            print!("server:{}", String::from_utf8_lossy(&buffer));
+            tun_sink.send(buffer).await.unwrap();
         
         }
     });
     // read from stdin and send to server
     loop {
         tokio::select! {
-            Some(packet)=stream.next()=>{
+            Some(packet)=tun_stream.next()=>{
                 let pkt: Vec<u8> = packet?;
-                cloned_arc.send(&pkt).await?;
+                send.write_all(&pkt).await.unwrap();
             }
         }
         /*let mut buffer = vec![0; 1024];

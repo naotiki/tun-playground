@@ -1,9 +1,9 @@
 
-use std::io;
 use async_trait::async_trait;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 #[async_trait]
 pub trait Transport: Send + Sync {
-    async fn send(&self, data: &[u8]) -> io::Result<()>;
-    async fn receive(&self) -> io::Result<Vec<u8>>;
+
+    fn split(self: Box<Self>) -> (Box<dyn AsyncRead+Send + Unpin>, Box<dyn AsyncWrite + Send + Unpin>);
 }

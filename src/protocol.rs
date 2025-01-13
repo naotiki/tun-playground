@@ -7,14 +7,31 @@ use tun::{Reader, Writer};
 
 #[derive(Serialize, Deserialize)]
 struct Capsule {
+    #[serde(with = "serde_bytes")]
     data: Vec<u8>,
 }
+ 
+#[derive(Serialize, Deserialize)]
+enum Frame{
+    Hello,
+    #[serde(with = "serde_bytes")]
+    Data( Vec<u8>),
+}
+
+
+
 pub enum Protocol {
     Tcp,
     Quic,
 }
 
 pub const USING_PROTOCOL: Protocol = Protocol::Quic;
+
+
+
+
+
+
 
 pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: &Option<SocketAddr>) {
     let mut buffer = [0u8; 1500];
