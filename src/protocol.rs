@@ -1,5 +1,7 @@
 use log::{error, info};
 use serde_derive::{Deserialize, Serialize};
+use tokio_util::bytes::BytesMut;
+use tokio_util::codec::{Decoder, Encoder};
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr};
 use tokio::net::UdpSocket;
@@ -11,13 +13,34 @@ struct Capsule {
     data: Vec<u8>,
 }
  
-#[derive(Serialize, Deserialize)]
-enum Frame{
+#[derive(Serialize, Deserialize,Debug)]
+pub enum Frame{
     Hello,
     #[serde(with = "serde_bytes")]
-    Data( Vec<u8>),
+    IPv4( Vec<u8>),
 }
 
+pub struct TunnelCodec;
+
+impl Encoder<Frame> for TunnelCodec {
+    type Error = Box<dyn std::error::Error + Send + Sync>;
+
+    fn encode(&mut self, item: Frame, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let bytes = serde_cbor::to_vec(&item)?;
+        dst.copy_from_slice(&bytes);
+        Ok(())
+    }
+}
+
+impl Decoder for TunnelCodec {
+    type Item = Frame;
+    type Error = Box<dyn std::error::Error + Send + Sync>;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        let item = serde_cbor::from_slice(&src)?;
+        Ok(item)
+    }
+}
 
 
 pub enum Protocol {

@@ -32,10 +32,12 @@ impl Server for QuicServer {
             println!("New QUIC connection: {:?}", new_connection.remote_address());
 
             tokio::spawn(async move {
-                let (send, recv) = new_connection.accept_bi().await.unwrap();
+                let (send, recv) = new_connection.accept_bi().await
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
                 if let Err(e) = session_handler(AppSession::new(Box::new(recv), Box::new(send))).await {
                     eprintln!("Connection failed: {}", e);
                 }
+                Ok::<_, io::Error>(())
             });
         }
         Ok(())

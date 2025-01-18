@@ -1,0 +1,42 @@
+services:
+  test-container1:
+    container_name: test-container1
+    image: nicolaka/netshoot
+    networks:
+      - internal
+  test-container2:
+    container_name: test-container2
+    image: nicolaka/netshoot
+    networks:
+      - internal
+  tunnel:
+    container_name: tunnel
+    build:
+      context: .
+      dockerfile: Dockerfile
+    privileged: true
+    expose:
+      - 8080
+    networks:
+      external:
+          ipv4_address: 10.0.0.1
+      internal:
+          ipv4_address: 10.255.255.253
+
+networks:
+  external:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/8
+  internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/8
+          gateway: 10.255.255.254
+          aux_addresses:
+            tunnel: 10.255.255.253
+    driver_opts:
+      com.docker.network.bridge.inhibit_ipv4: "true"
+      com.docker.network.bridge.enable_ip_masquerade: "false"
