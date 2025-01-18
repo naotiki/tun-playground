@@ -1,0 +1,22 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+common = { path = "../common" }
+tun = {version = "0.7.10",features = ["async"]}
+tokio = { version = "1", features = ["full","io-util"] }
+tokio-util = {version = "0.7.13", features = ["io-util"]}
+tokio-stream = "0.1.17"
+packet = { version = "0.1.4" }
+async-trait = "0.1.84"
+futures = "0.3.31"
+
+quinn = "0.11"
+rustls = { version = "0.23.20",default-features = false,features = ["logging","std",] }
+rcgen = "0.13.2"
+netns-rs = "0.1.0"
+
+tappers = { version = "0.4.2", features = ["tapwin6","wintun","tokio"] }
+ulid = "1.1.4"

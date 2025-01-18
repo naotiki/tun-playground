@@ -1,60 +1,63 @@
-use crate::tunnel_backend::{ClientConnectionConfig, TransportTunnelClientBackend};
+use crate::transport::Transport;
 use quinn::crypto::rustls::QuicClientConfig;
-use quinn::{ClientConfig, ConnectError, Connection, ConnectionError, Endpoint};
+use quinn::{ClientConfig, Endpoint};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
-use std::error::Error;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
+use std::io;
 use std::sync::Arc;
-use tokio::io::{copy, copy_bidirectional_with_sizes, duplex, AsyncRead, AsyncWrite};
+use tokio::io::{AsyncRead, AsyncWrite};
 
-fn configure_client() -> Result<Endpoint, Box<dyn Error + Send + Sync + 'static>> {
-    let mut endpoint = Endpoint::client(SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0))?;
+pub struct QuicTransport {
+    connection: quinn::Connection,
+    send: quinn::SendStream,
+    recv: quinn::RecvStream,
+}
 
-    endpoint.set_default_client_config(ClientConfig::new(Arc::new(QuicClientConfig::try_from(
-        rustls::ClientConfig::builder()
+impl QuicTransport {
+    pub async fn new(server_addr: &str) -> io::Result<Self> {
+        let mut endpoint = Endpoint::client("0.0.0.0:0".parse().unwrap())?;
+        let client_config = rustls::ClientConfig::builder()
             .dangerous()
             .with_custom_certificate_verifier(SkipServerVerification::new())
-            .with_no_client_auth(),
-    )?)));
-    Ok(endpoint)
-}
+            .with_no_client_auth();
 
-pub struct QuicClientBackend {
-    client_endpoint: Arc<Endpoint>,
-    connection: Connection,
-    pub recv: quinn::RecvStream,
-    pub send: quinn::SendStream,
-}
+        //client_config.key_log = Arc::new(KeyLogFile::new());
+        endpoint.set_default_client_config(ClientConfig::new(Arc::new(
+            QuicClientConfig::try_from(client_config).unwrap(),
+        )));
 
-impl TransportTunnelClientBackend for QuicClientBackend {
-    // create new session
-    async fn connect(client_config: ClientConnectionConfig) -> QuicClientBackend {
-        let client_endpoint = Arc::new(configure_client().unwrap());
-        let connection = client_endpoint
-            .connect(client_config.server_addr, &*client_config.server_name)
+        let connection = endpoint
+            .connect(server_addr.parse().unwrap(), "localhost")
             .unwrap()
-            .await
-            .unwrap();
+            .await?;
+        let (send, recv) = connection.open_bi().await?;
         println!("[client] connected: addr={}", connection.remote_address());
-        let (send, recv) = connection.open_bi().await.unwrap();
-        QuicClientBackend {
-            client_endpoint,
+        Ok(Self {
             connection,
             recv,
             send,
-        }
+        })
     }
+}
 
-    async fn close_session(self) {
-        self.connection.close(0u32.into(), b"done");
-        self.client_endpoint.wait_idle().await;
+#[async_trait::async_trait]
+impl Transport for QuicTransport {
+    fn split(
+        self: Box<Self>,
+    ) -> (
+        Box<dyn AsyncRead + Send + Unpin>,
+        Box<dyn AsyncWrite + Send + Unpin>,
+    ) {
+        let recv = self.recv;
+        let send = self.send;
+
+        (Box::new(recv), Box::new(send))
     }
 }
 
 /// Dummy certificate verifier that treats any certificate as valid.
 /// NOTE, such verification is vulnerable to MITM attacks, but convenient for testing.
 #[derive(Debug)]
-pub(crate) struct SkipServerVerification(Arc<rustls::crypto::CryptoProvider>);
+struct SkipServerVerification(Arc<rustls::crypto::CryptoProvider>);
 
 impl SkipServerVerification {
     fn new() -> Arc<Self> {

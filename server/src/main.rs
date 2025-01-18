@@ -1,17 +1,23 @@
+pub mod asynctap;
+pub mod network;
+pub mod quic;
+pub mod server;
+pub mod tcp;
+
+use asynctap::AsyncTap;
+use common::protocol::{Frame, Protocol, TunnelCodec, USING_PROTOCOL};
+use common::tun::TunInterface;
 use futures::{FutureExt, SinkExt, StreamExt};
 use netns_rs::NetNs;
 use packet::{ether, ip, Builder};
+use quic::QuicServer;
+use server::{AppSession, Server};
 use std::io;
+use tcp::TcpServer;
 use tokio::io::AsyncWriteExt;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio_util::io::ReaderStream;
 use tun::Tun;
-use tun_playground::protocol::{Frame, Protocol, TunnelCodec, USING_PROTOCOL};
-use tun_playground::server::asynctap::AsyncTap;
-use tun_playground::server::quic::QuicServer;
-use tun_playground::server::server::{AppSession, Server};
-use tun_playground::server::tcp::TcpServer;
-use tun_playground::tun::TunInterface;
 
 pub async fn create_server(protocol: Protocol, address: &str) -> io::Result<Box<dyn Server>> {
     match protocol {

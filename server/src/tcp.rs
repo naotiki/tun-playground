@@ -1,4 +1,4 @@
-use crate::server::server::Server;
+use crate::server::Server;
 use std::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};

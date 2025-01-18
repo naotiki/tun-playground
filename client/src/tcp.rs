@@ -1,7 +1,7 @@
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
 
-use crate::client::transport::Transport;
+use crate::transport::Transport;
 use async_trait::async_trait;
 use std::io;
 

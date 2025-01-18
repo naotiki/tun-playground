@@ -1,17 +1,22 @@
+pub mod nat;
+pub mod quic;
+pub mod tcp;
+pub mod transport;
+
+use common::protocol::{Frame, Protocol, TunnelCodec, USING_PROTOCOL};
+use common::tun::TunInterface;
 use futures::{SinkExt, StreamExt};
+use nat::{NATTable, Network};
 use packet::{ip, AsPacket, Packet};
+use quic::QuicTransport;
 use std::collections::HashMap;
 use std::io;
 use std::net::Ipv4Addr;
+use tcp::TcpTransport;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::bytes::BytesMut;
 use tokio_util::codec::{Decoder, Encoder, FramedRead, FramedWrite};
-use tun_playground::client::nat::{NATTable, Network};
-use tun_playground::client::quic::QuicTransport;
-use tun_playground::client::tcp::TcpTransport;
-use tun_playground::client::transport::Transport;
-use tun_playground::protocol::{Frame, Protocol, TunnelCodec, USING_PROTOCOL};
-use tun_playground::tun::TunInterface;
+use transport::Transport;
 
 pub async fn create_transport(protocol: Protocol, addr: &str) -> io::Result<Box<dyn Transport>> {
     match protocol {
