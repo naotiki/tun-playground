@@ -13,18 +13,14 @@ pub struct ClientConnectionConfig {
     pub server_name: String,
 }
 
-
 pub trait TransportTunnelServerBackend {
     async fn serve(listen_addr: SocketAddr) -> Self;
-    async fn accept(&self)->Result<impl TransportTunnelSessionBackend,()>;
+    async fn accept(&self) -> Result<impl TransportTunnelSessionBackend, ()>;
     async fn shutdown(self);
 }
 
-
-
-pub trait TransportTunnelSessionBackend{
+pub trait TransportTunnelSessionBackend {
     async fn close_session(self);
-/*    async fn pipe_write(&mut self, write: impl AsyncWrite);
+    /*    async fn pipe_write(&mut self, write: impl AsyncWrite);
     async fn pipe_read(&mut self, read: impl AsyncRead);*/
 }
-

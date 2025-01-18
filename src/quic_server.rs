@@ -58,8 +58,6 @@ impl TransportTunnelServerBackend for QuicServerBackend {
     }
 }
 
-
-
 pub struct QuicServerSession {
     conn: quinn::Connection,
     pub send: quinn::SendStream,

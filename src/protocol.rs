@@ -1,10 +1,10 @@
 use log::{error, info};
 use serde_derive::{Deserialize, Serialize};
-use tokio_util::bytes::BytesMut;
-use tokio_util::codec::{Decoder, Encoder};
 use std::io::{Read, Write};
 use std::net::{IpAddr, SocketAddr};
 use tokio::net::UdpSocket;
+use tokio_util::bytes::{BufMut, BytesMut};
+use tokio_util::codec::{Decoder, Encoder};
 use tun::{Reader, Writer};
 
 #[derive(Serialize, Deserialize)]
@@ -12,12 +12,12 @@ struct Capsule {
     #[serde(with = "serde_bytes")]
     data: Vec<u8>,
 }
- 
-#[derive(Serialize, Deserialize,Debug)]
-pub enum Frame{
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum Frame {
     Hello,
     #[serde(with = "serde_bytes")]
-    IPv4( Vec<u8>),
+    IPv4(Vec<u8>),
 }
 
 pub struct TunnelCodec;
@@ -27,7 +27,7 @@ impl Encoder<Frame> for TunnelCodec {
 
     fn encode(&mut self, item: Frame, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let bytes = serde_cbor::to_vec(&item)?;
-        dst.copy_from_slice(&bytes);
+        dst.put(bytes.as_slice());
         Ok(())
     }
 }
@@ -42,19 +42,12 @@ impl Decoder for TunnelCodec {
     }
 }
 
-
 pub enum Protocol {
     Tcp,
     Quic,
 }
 
 pub const USING_PROTOCOL: Protocol = Protocol::Quic;
-
-
-
-
-
-
 
 pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: &Option<SocketAddr>) {
     let mut buffer = [0u8; 1500];
@@ -70,7 +63,9 @@ pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: &Option<So
                     data: buffer[..n].to_vec(),
                 };
                 let serialized_data = bincode::serialize(&capsule).unwrap();
-                udp.send_to(&serialized_data,peer_addr.unwrap()).await.unwrap();
+                udp.send_to(&serialized_data, peer_addr.unwrap())
+                    .await
+                    .unwrap();
             }
             Err(e) => {
                 error!("TUN read error: {}", e);
@@ -79,12 +74,16 @@ pub async fn tun_to_udp(tun: &mut Reader, udp: &UdpSocket, peer_addr: &Option<So
     }
 }
 
-pub async fn udp_to_tun(tun: &mut Writer, udp: &UdpSocket, peer_addr: Option<&mut Option<SocketAddr>>) {
+pub async fn udp_to_tun(
+    tun: &mut Writer,
+    udp: &UdpSocket,
+    peer_addr: Option<&mut Option<SocketAddr>>,
+) {
     let mut buffer = [0u8; 1500];
     loop {
         match udp.recv_from(&mut buffer).await {
             Ok((n, addr)) => {
-                if  let Some(&mut ref mut a) = peer_addr {
+                if let Some(&mut ref mut a) = peer_addr {
                     *(a) = Some(addr)
                 }
                 let capsule: Capsule = bincode::deserialize(&buffer[..n]).unwrap();

@@ -3,7 +3,7 @@ use std::io;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-use super::server::{AppSession, AsyncSessionHandler, };
+use super::server::{AppSession, AsyncSessionHandler};
 
 pub struct TcpServer {
     address: String,
@@ -19,12 +19,10 @@ impl TcpServer {
 
 #[async_trait::async_trait]
 impl Server for TcpServer {
-    async fn start(&self,session_handler: AsyncSessionHandler) -> io::Result<()> 
-   
-    {
+    async fn start(&self, session_handler: AsyncSessionHandler) -> io::Result<()> {
         let listener = TcpListener::bind(&self.address).await?;
         println!("TCP server listening on {}", self.address);
-        
+
         loop {
             let (stream, addr) = listener.accept().await?;
             println!("New connection from {}", addr);

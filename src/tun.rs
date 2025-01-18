@@ -9,14 +9,14 @@ pub struct TunInterface {
 }
 
 impl TunInterface {
-    pub fn new(addr: IpAddr) -> TunInterface {
+    pub fn new(addr: IpAddr, dest: IpAddr) -> TunInterface {
         println!("ip:{}", addr);
         // create TUN device
         let mut config = Configuration::default();
         config
             .address(addr)
             .netmask((255, 255, 255, 0))
-            .destination((10, 1, 0, 1))
+            //TODODODOOD .destination(dest)
             .mtu(1200)
             .layer(tun::Layer::L3)
             .up();
@@ -27,8 +27,11 @@ impl TunInterface {
         });
         let dev = tun::create_as_async(&config).unwrap();
         //let framed = /*Arc::new(Mutex::new(*/dev.into_framed(); //));
-                                                                /*        let (send, recv) = dev.split();*/
+        /*        let (send, recv) = dev.split();*/
         //TunInterface { config, framed }
-        TunInterface { config, device: dev }
+        TunInterface {
+            config,
+            device: dev,
+        }
     }
 }

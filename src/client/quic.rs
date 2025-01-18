@@ -2,9 +2,9 @@ use crate::client::transport::Transport;
 use quinn::crypto::rustls::QuicClientConfig;
 use quinn::{ClientConfig, Endpoint};
 use rustls::pki_types::{CertificateDer, ServerName, UnixTime};
-use tokio::io::{AsyncRead, AsyncWrite, };
 use std::io;
 use std::sync::Arc;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 pub struct QuicTransport {
     connection: quinn::Connection,
@@ -20,9 +20,7 @@ impl QuicTransport {
             .with_custom_certificate_verifier(SkipServerVerification::new())
             .with_no_client_auth();
 
-        
         //client_config.key_log = Arc::new(KeyLogFile::new());
-
         endpoint.set_default_client_config(ClientConfig::new(Arc::new(
             QuicClientConfig::try_from(client_config).unwrap(),
         )));
@@ -36,17 +34,22 @@ impl QuicTransport {
         Ok(Self {
             connection,
             recv,
-            send
+            send,
         })
     }
 }
 
 #[async_trait::async_trait]
 impl Transport for QuicTransport {
-    fn split(self: Box<Self>) -> (Box<dyn AsyncRead + Send + Unpin>, Box<dyn AsyncWrite + Send + Unpin>) {
+    fn split(
+        self: Box<Self>,
+    ) -> (
+        Box<dyn AsyncRead + Send + Unpin>,
+        Box<dyn AsyncWrite + Send + Unpin>,
+    ) {
         let recv = self.recv;
         let send = self.send;
-        
+
         (Box::new(recv), Box::new(send))
     }
 }
@@ -106,4 +109,3 @@ impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
         self.0.signature_verification_algorithms.supported_schemes()
     }
 }
-

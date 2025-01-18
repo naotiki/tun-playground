@@ -1,18 +1,16 @@
-use bollard::Docker;
 use bollard::network::CreateNetworkOptions;
+use bollard::Docker;
 
-struct DockerInstance{
-    docker:Docker
+struct DockerInstance {
+    docker: Docker,
 }
 
-impl DockerInstance{
+impl DockerInstance {
     pub fn new() -> DockerInstance {
         let docker = Docker::connect_with_local_defaults().unwrap();
-        DockerInstance{
-            docker
-        }
+        DockerInstance { docker }
     }
-    fn create_network(self){
+    fn create_network(self) {
         todo!("create network")
     }
 }

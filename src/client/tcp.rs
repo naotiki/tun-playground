@@ -1,9 +1,9 @@
-use tokio::net::TcpStream;
 use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::TcpStream;
 
-use std::io;
-use async_trait::async_trait;
 use crate::client::transport::Transport;
+use async_trait::async_trait;
+use std::io;
 
 pub struct TcpTransport {
     stream: TcpStream,
@@ -12,14 +12,17 @@ pub struct TcpTransport {
 impl TcpTransport {
     pub async fn new(address: &str) -> io::Result<Self> {
         let stream = TcpStream::connect(address).await?;
-        Ok(Self {
-            stream
-        })
+        Ok(Self { stream })
     }
 }
 #[async_trait]
 impl Transport for TcpTransport {
-    fn split(self: Box<Self>) -> (Box<dyn AsyncRead + Send + Unpin>, Box<dyn AsyncWrite + Send + Unpin>) {
+    fn split(
+        self: Box<Self>,
+    ) -> (
+        Box<dyn AsyncRead + Send + Unpin>,
+        Box<dyn AsyncWrite + Send + Unpin>,
+    ) {
         let (recv, send) = self.stream.into_split();
         (Box::new(recv), Box::new(send))
     }

@@ -33,7 +33,9 @@ impl NATTable {
     pub fn convert(&self, ip: Ipv4Addr) -> Ipv4Addr {
         for (local, remote) in self.table.iter() {
             if local.is_in_network(ip) {
-                return Ipv4Addr::from((ip.to_bits() & 0xFFFFFFFF >> (local.netmask))|remote.ip.to_bits());
+                return Ipv4Addr::from(
+                    (ip.to_bits() & 0xFFFFFFFF >> (local.netmask)) | remote.ip.to_bits(),
+                );
             }
         }
         ip
@@ -42,7 +44,9 @@ impl NATTable {
     pub fn reverse(&self, ip: Ipv4Addr) -> Ipv4Addr {
         for (local, remote) in self.table.iter() {
             if remote.is_in_network(ip) {
-                return Ipv4Addr::from((ip.to_bits() & 0xFFFFFFFF >> (remote.netmask))|local.ip.to_bits());
+                return Ipv4Addr::from(
+                    (ip.to_bits() & 0xFFFFFFFF >> (remote.netmask)) | local.ip.to_bits(),
+                );
             }
         }
         ip

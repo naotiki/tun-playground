@@ -1,4 +1,3 @@
-
 use std::ffi::CStr;
 use std::{io, net::Ipv4Addr};
 
@@ -15,7 +14,8 @@ pub struct AsyncTap {
 impl AsyncTap {
     pub fn new() -> io::Result<Self> {
         let mut tap = Tap::new()?;
-        let iface = Interface::from_cstr(unsafe { CStr::from_bytes_with_nul_unchecked(b"tap0\0") }).unwrap();
+        let iface = Interface::from_cstr(unsafe { CStr::from_bytes_with_nul_unchecked(b"tap0\0") })
+            .unwrap();
         tap.add_addr(Ipv4Addr::new(10, 0, 0, 1))?;
         tap.set_up()?;
         /* let tap_writer = Arc::new(tap);

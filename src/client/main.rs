@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let protocol = USING_PROTOCOL; // 動的に変更可能
 
-    let tun = TunInterface::new("10.1.0.2".parse().unwrap());
+    let tun = TunInterface::new("10.1.0.2".parse().unwrap(), "10.0.0.1".parse().unwrap());
     let (mut tun_sink, mut tun_stream) = tun.device.into_framed().split();
 
     let transport = create_transport(protocol, "127.0.0.1:8080").await?;
@@ -40,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut frame_read = FramedRead::new(recv, TunnelCodec);
     let mut frame_send = FramedWrite::new(send, TunnelCodec);
     //copy received data to stdout using tokio::spawn
-    loop{
+    loop {
         tokio::select! {
             Some(quic_to_tun) = frame_read.next()=>{
                 match quic_to_tun {
@@ -88,8 +88,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-
-
     /*loop {
         let mut buffer = vec![0; 1024];
         let n = io::stdin().read(&mut buffer)?;
@@ -103,4 +101,3 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let response = transport.receive().await?;
     println!("Response: {:?}", response);*/
 }
-

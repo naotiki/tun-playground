@@ -1,13 +1,12 @@
-use std::error::Error;
+use crate::server::server::Server;
+use quinn::{crypto::Session, Endpoint, ServerConfig};
+use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
 use std::io;
 use std::net::SocketAddr;
-use quinn::{crypto::Session, Endpoint, ServerConfig};
 use std::sync::Arc;
-use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
-use crate::server::server::Server;
+use std::{error::Error, time::Duration};
 
 use super::server::{AppSession, AsyncSessionHandler};
-
 
 pub struct QuicServer {
     address: String,
@@ -32,9 +31,13 @@ impl Server for QuicServer {
             println!("New QUIC connection: {:?}", new_connection.remote_address());
 
             tokio::spawn(async move {
-                let (send, recv) = new_connection.accept_bi().await
+                let (send, recv) = new_connection
+                    .accept_bi()
+                    .await
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e.to_string()))?;
-                if let Err(e) = session_handler(AppSession::new(Box::new(recv), Box::new(send))).await {
+                if let Err(e) =
+                    session_handler(AppSession::new(Box::new(recv), Box::new(send))).await
+                {
                     eprintln!("Connection failed: {}", e);
                 }
                 Ok::<_, io::Error>(())
@@ -43,7 +46,6 @@ impl Server for QuicServer {
         Ok(())
     }
 }
-
 
 pub fn make_server_endpoint(
     bind_addr: SocketAddr,
@@ -61,9 +63,10 @@ fn configure_server(
 
     let mut server_config =
         ServerConfig::with_single_cert(vec![cert_der.clone()], priv_key.into())?;
-    
+
     let transport_config = Arc::get_mut(&mut server_config.transport).unwrap();
     transport_config.max_concurrent_uni_streams(0_u8.into());
+    transport_config.keep_alive_interval(Some(Duration::from_secs(10)));
 
     Ok((server_config, cert_der))
 }

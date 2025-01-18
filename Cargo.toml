@@ -41,3 +41,5 @@ tappers = { version = "0.4.2", features = ["tapwin6","wintun","tokio"] }
 packet = { version = "0.1.4" }
 
 tokio-tun = "0.13.0"
+
+netns-rs = "0.1.0"
